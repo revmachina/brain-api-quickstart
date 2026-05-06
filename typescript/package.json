@@ -1,0 +1,25 @@
+{
+  "name": "@revmachina/brain-api-quickstart-typescript",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reference TypeScript integration for the Revmachina Brain API.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
