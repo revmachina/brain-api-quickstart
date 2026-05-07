@@ -65,56 +65,54 @@ def main() -> int:
             print("   No objection_playbook entries (tenant has no objection_library yet).")
 
         # ─── Step 2 — Log call started ─────────────────────────────────────
-        call_id = f"call_{uuid.uuid4()}"
+        # The server returns a call_id. We use that exact value for Step 5's
+        # idempotency key so the call lifecycle is correlated end-to-end.
         dial_id = f"dial_{uuid.uuid4()}"
         print("\n[2/9] Logging call started...")
-        try:
-            cs = client.post_call_started(SANDBOX_LEAD_ID, {
-                "agent_type": "ai_voice",
-                "agent_id":   "quickstart_demo_agent",
-                "channel":    "outbound_call",
-                "dial_id":    dial_id,
-                "started_at": _now_iso(),
-            })
-            print(f"   call_id: {(cs.get('call_id') or call_id)[:16]}...")
-        except BrainApiError as e:
-            print(f"   (call-started returned {e.status} — sandbox-tenant write paths may be limited; continuing demo)")
+        cs = client.post_call_started(SANDBOX_LEAD_ID, {
+            "agent_type": "ai_voice",
+            "agent_id":   "quickstart_demo_agent",
+            "channel":    "outbound_call",
+            "dial_id":    dial_id,
+            "started_at": _now_iso(),
+        })
+        call_id = cs["call_id"]
+        print(f"   call_id: {call_id[:16]}...")
 
         # ─── Step 3 — Simulate a 60-second conversation ────────────────────
         print("\n[3/9] Simulating 60-second conversation (no audio, no LLM — just dialogue text)...")
         play_dialogue(FORECLOSURE_DIALOGUE, per_turn_ms=350)
 
         # ─── Step 4 — Post objection signal ────────────────────────────────
-        print("\n[4/9] Posting objection signal (price_too_low)...")
-        try:
-            sig = client.post_signal(SANDBOX_LEAD_ID, {
-                "signal_type":   "objection_raised",
-                "channel":       "outbound_call",
-                "content":       "Seller objected: price too low. Requested floor $175K.",
-                "occurred_at":   _now_iso(),
-                "source_system": "quickstart_demo",
-            })
-            print(f"   signal_id: {(sig.get('signal_id') or 'n/a')[:16]}...")
-            if sig.get("lead_rescored"):
-                print(f"   Lead rescored: new={sig.get('new_priority_score')} ({sig.get('new_score_band')})")
-        except BrainApiError as e:
-            print(f"   (signal endpoint returned {e.status} — sandbox-tenant write paths may be limited; continuing demo)")
+        # channel uses SignalRequest enum from OpenAPI: [call, sms, email, web, other].
+        # The CallStartedRequest enum (outbound_call/inbound_call/etc.) is a
+        # separate vocabulary used only on call lifecycle endpoints.
+        print("\n[4/9] Posting objection signal...")
+        sig = client.post_signal(SANDBOX_LEAD_ID, {
+            "signal_type":   "objection_raised",
+            "channel":       "call",
+            "content":       "Seller objected: price too low. Requested floor $175K.",
+            "occurred_at":   _now_iso(),
+            "source_system": "quickstart_demo",
+        })
+        print(f"   signal_id: {(sig.get('signal_id') or 'n/a')[:16]}...")
+        if sig.get("lead_rescored"):
+            print(f"   Lead rescored: new={sig.get('new_priority_score')} ({sig.get('new_score_band')})")
 
         # ─── Step 5 — Log call ended ───────────────────────────────────────
+        # Use the SAME call_id the server returned in Step 2 — the call lifecycle
+        # is correlated by this id end-to-end.
         print("\n[5/9] Logging call ended...")
-        try:
-            ce = client.post_call_ended(SANDBOX_LEAD_ID, {
-                "call_id":          call_id,
-                "ended_at":         _now_iso(),
-                "duration_seconds": 67,
-                "disposition":      "callback_scheduled",
-                "notes":            "Seller engaged. Floor 175K. Callback tomorrow afternoon.",
-            })
-            print("   Disposition: callback_scheduled")
-            if ce.get("lead_rescored"):
-                print(f"   Lead rescored: new={ce.get('new_priority_score')} ({ce.get('new_score_band')})")
-        except BrainApiError as e:
-            print(f"   (call-ended returned {e.status} — sandbox-tenant write paths may be limited; continuing demo)")
+        ce = client.post_call_ended(SANDBOX_LEAD_ID, {
+            "call_id":          call_id,
+            "ended_at":         _now_iso(),
+            "duration_seconds": 67,
+            "disposition":      "callback_scheduled",
+            "notes":            "Seller engaged. Floor 175K. Callback tomorrow afternoon.",
+        })
+        print("   Disposition: callback_scheduled")
+        if ce.get("lead_rescored"):
+            print(f"   Lead rescored: new={ce.get('new_priority_score')} ({ce.get('new_score_band')})")
 
         # ─── Step 6 — Create webhook subscription ──────────────────────────
         print("\n[6/9] Creating webhook subscription...")

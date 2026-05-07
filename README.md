@@ -78,33 +78,39 @@ This is the actual output from a fresh `npm start` (or `python -m brain_api_quic
 [1/9] Fetching brief for sandbox lead Maria Sandbox-Demo...
    Score: 94 (hot)
    Must sell: no_signal
-   Motivation: Maria's motivation is not yet classified — re-qualify on call.
+   Motivation: Foreclosure auction in 18 days. Seller out of state, cannot manage repairs. Floor $175K to cover payoff. Wants fast clean close — financial urgency is the lever.
    Top objection in playbook: "need_to_think" (win rate: 0.46)
 
 [2/9] Logging call started...
-   call_id: call_a7b3c2...
-   (or 401 if your sandbox key lacks write scopes — demo continues gracefully)
+   call_id: call_b8e0024a-bb...
 
 [3/9] Simulating 60-second conversation (no audio, no LLM — just dialogue text)...
-   Agent:  "Hi Maria, this is Alex with Revmachina — I understand you're dealing with a tight timeline..."
+   Agent:  "Hi Maria, this is Alex with Revmachina — I understand you're dealing with a tight timeline on the property. Got a couple minutes?"
    Seller: "Yeah, I have a minute. The auction is in 18 days, I just need this done."
-   Agent:  "Most folks in your spot are weighing two things — the highest number on paper, and the
-            number that actually closes before the auction date. Which matters more?"
+   Agent:  "I hear you. Most folks in your spot are weighing two things — the highest number on paper, and the number that actually closes before the auction date. Which matters more?"
    Seller: "I need it to close. But your offer's too low. I was expecting more."
-   Agent:  "Totally fair. The number reflects what we can pay given the timeline you're working with..."
-   ... (8 turns total)
+   Agent:  "Totally fair. The number reflects what we can pay given the timeline you're working with — auction in 18 days. A retail sale at full asking takes 60 to 90 days. What's your hard floor?"
+   Seller: "I'd need at least 175. Anything below that doesn't cover what I owe."
+   Agent:  "Understood. Let me run the numbers and get back to you in 24 hours with our best offer at that floor or as close as we can get. Sound good?"
+   Seller: "Yeah, that works. Call me tomorrow afternoon."
 
-[4/9] Posting objection signal (price_too_low)...
-[5/9] Logging call ended (disposition: callback_scheduled)...
+[4/9] Posting objection signal...
+   signal_id: sig_482e4aae-363...
+   Lead rescored: new=80 (hot)
+
+[5/9] Logging call ended...
+   Disposition: callback_scheduled
+   Lead rescored: new=80 (hot)
 
 [6/9] Creating webhook subscription...
-   Subscription ID: ba38adb2-e433-4fc7-835d-2b5988e14aad
+   Subscription ID: f56f3f09-89dd-4760-bc4b-245399ba8054
    URL: https://webhook.site/<your-disposable-id>
-   Signing secret: whsec_17c199a7... (saved in memory for HMAC verification)
+   Signing secret: whsec_768514f3... (saved in memory for HMAC verification)
 
 [7/9] Triggering sandbox demo event (lead.score_changed)...
-   Triggered lead.score_changed. Cron worker fires every minute; expect delivery within 60s.
-   Active subscriptions in sandbox tenant: 1
+   Triggered lead.score_changed. Cron worker fires every minute; expect delivery within 60s if you have an active subscription matching this event type.
+   Delivery estimate: <60s
+   Active subscriptions in sandbox tenant: 2
 
 [8/9] Webhook delivery is queued.
    Within ~60s, your subscription URL receives a POST with:

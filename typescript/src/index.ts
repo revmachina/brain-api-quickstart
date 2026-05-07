@@ -47,63 +47,55 @@ async function main() {
     }
 
     // ─── Step 2 — Log call started ─────────────────────────────────────────
-    const callId = `call_${randomUUID()}`
+    // The server returns a call_id. We use that exact value for Step 5's
+    // idempotency key so the call lifecycle is correlated end-to-end.
     const dialId = `dial_${randomUUID()}`
     console.log('\n[2/9] Logging call started...')
-    try {
-      const callStart = await client.postCallStarted(SANDBOX_LEAD_ID, {
-        agent_type: 'ai_voice',
-        agent_id:   'quickstart_demo_agent',
-        channel:    'outbound_call',
-        dial_id:    dialId,
-        started_at: new Date().toISOString(),
-      })
-      console.log(`   call_id: ${callStart.call_id?.slice(0, 16) ?? callId.slice(0, 16)}...`)
-    } catch (e) {
-      // call-started can 4xx for sandbox leads with strict tenant guards.
-      // We continue — the demo doesn't depend on call-started succeeding,
-      // just on showing the request shape.
-      console.log(`   (call-started returned ${(e as BrainApiError).status ?? 'error'} — sandbox-tenant write paths may be limited; continuing demo)`)
-    }
+    const callStart = await client.postCallStarted(SANDBOX_LEAD_ID, {
+      agent_type: 'ai_voice',
+      agent_id:   'quickstart_demo_agent',
+      channel:    'outbound_call',
+      dial_id:    dialId,
+      started_at: new Date().toISOString(),
+    })
+    const callId = callStart.call_id
+    console.log(`   call_id: ${callId.slice(0, 16)}...`)
 
     // ─── Step 3 — Simulate a 60-second conversation ─────────────────────────
     console.log('\n[3/9] Simulating 60-second conversation (no audio, no LLM — just dialogue text)...')
     await playDialogue(FORECLOSURE_DIALOGUE, { perTurnMs: 350 })
 
     // ─── Step 4 — Post objection signal ────────────────────────────────────
-    console.log('\n[4/9] Posting objection signal (price_too_low)...')
-    try {
-      const signal = await client.postSignal(SANDBOX_LEAD_ID, {
-        signal_type:    'objection_raised',
-        channel:        'outbound_call',
-        content:        'Seller objected: price too low. Requested floor $175K.',
-        occurred_at:    new Date().toISOString(),
-        source_system:  'quickstart_demo',
-      })
-      console.log(`   signal_id: ${signal.signal_id?.slice(0, 16) ?? 'n/a'}...`)
-      if (signal.lead_rescored) {
-        console.log(`   Lead rescored: new=${signal.new_priority_score} (${signal.new_score_band})`)
-      }
-    } catch (e) {
-      console.log(`   (signal endpoint returned ${(e as BrainApiError).status ?? 'error'} — sandbox-tenant write paths may be limited; continuing demo)`)
+    // channel uses SignalRequest enum from OpenAPI: [call, sms, email, web, other].
+    // The CallStartedRequest enum (outbound_call/inbound_call/etc.) is a
+    // separate vocabulary used only on call lifecycle endpoints.
+    console.log('\n[4/9] Posting objection signal...')
+    const signal = await client.postSignal(SANDBOX_LEAD_ID, {
+      signal_type:    'objection_raised',
+      channel:        'call',
+      content:        'Seller objected: price too low. Requested floor $175K.',
+      occurred_at:    new Date().toISOString(),
+      source_system:  'quickstart_demo',
+    })
+    console.log(`   signal_id: ${signal.signal_id?.slice(0, 16) ?? 'n/a'}...`)
+    if (signal.lead_rescored) {
+      console.log(`   Lead rescored: new=${signal.new_priority_score} (${signal.new_score_band})`)
     }
 
     // ─── Step 5 — Log call ended ───────────────────────────────────────────
+    // Use the SAME call_id the server returned in Step 2 — the call lifecycle
+    // is correlated by this id end-to-end.
     console.log('\n[5/9] Logging call ended...')
-    try {
-      const callEnd = await client.postCallEnded(SANDBOX_LEAD_ID, {
-        call_id:          callId,
-        ended_at:         new Date().toISOString(),
-        duration_seconds: 67,
-        disposition:      'callback_scheduled',
-        notes:            'Seller engaged. Floor 175K. Callback tomorrow afternoon.',
-      })
-      console.log(`   Disposition: callback_scheduled`)
-      if (callEnd.lead_rescored) {
-        console.log(`   Lead rescored: new=${callEnd.new_priority_score} (${callEnd.new_score_band})`)
-      }
-    } catch (e) {
-      console.log(`   (call-ended returned ${(e as BrainApiError).status ?? 'error'} — sandbox-tenant write paths may be limited; continuing demo)`)
+    const callEnd = await client.postCallEnded(SANDBOX_LEAD_ID, {
+      call_id:          callId,
+      ended_at:         new Date().toISOString(),
+      duration_seconds: 67,
+      disposition:      'callback_scheduled',
+      notes:            'Seller engaged. Floor 175K. Callback tomorrow afternoon.',
+    })
+    console.log(`   Disposition: callback_scheduled`)
+    if (callEnd.lead_rescored) {
+      console.log(`   Lead rescored: new=${callEnd.new_priority_score} (${callEnd.new_score_band})`)
     }
 
     // ─── Step 6 — Create webhook subscription ──────────────────────────────
